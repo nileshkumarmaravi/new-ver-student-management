@@ -1,0 +1,258 @@
+#!/bin/bash
+
+FILE="students.txt"
+BACKUP_DIR="backup"
+
+mkdir -p $BACKUP_DIR
+touch $FILE
+
+# Colors
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+RESET="\e[0m"
+
+# Admin Login
+USERNAME="admin"
+PASSWORD="1234"
+
+echo -e "${BLUE}"
+echo "╔══════════════════════════════════════╗"
+echo "║     STUDENT MANAGEMENT SYSTEM LOGIN  ║"
+echo "╚══════════════════════════════════════╝"
+echo -e "${RESET}"
+
+read -p "Username: " user
+read -s -p "Password: " pass
+echo
+
+if [[ "$user" != "$USERNAME" || "$pass" != "$PASSWORD" ]]
+then
+echo -e "${RED}❌ Invalid Login${RESET}"
+exit
+fi
+
+echo -e "${GREEN}✅ Login Successful${RESET}"
+
+# Menu Function
+show_menu() {
+
+echo
+echo "╔══════════════════════════════════════╗"
+echo "║      STUDENT MANAGEMENT SYSTEM       ║"
+echo "╠══════════════════════════════════════╣"
+echo "║ 1. Add Student                       ║"
+echo "║ 2. Search Student                    ║"
+echo "║ 3. View All Students                 ║"
+echo "║ 4. Remove Student                    ║"
+echo "║ 5. Dashboard                         ║"
+echo "║ 6. Backup                            ║"
+echo "║ 7. Export CSV                        ║"
+echo "║ 8. Exit                              ║"
+echo "╚══════════════════════════════════════╝"
+echo
+}
+
+# Main Loop
+while true
+do
+
+show_menu
+
+read -p "Enter your choice: " choice
+echo
+
+case $choice in
+
+1)
+
+echo -e "${YELLOW}Add Student${RESET}"
+
+read -p "Enter Name: " name
+
+while true
+do
+read -p "Enter Age: " age
+[[ $age =~ ^[0-9]+$ ]] && break
+echo -e "${RED}Age must be numeric${RESET}"
+done
+
+while true
+do
+read -p "Enter Class (1-12): " class
+[[ $class =~ ^[0-9]+$ ]] && [ $class -ge 1 ] && [ $class -le 12 ] && break
+echo -e "${RED}Class must be between 1 and 12${RESET}"
+done
+
+roll=$(($(wc -l < $FILE)+1))
+
+echo "$name,$roll,$age,$class" >> $FILE
+
+echo -e "${GREEN}Student Added Successfully${RESET}"
+echo -e "${BLUE}Roll Number: $roll${RESET}"
+
+;;
+
+2)
+
+echo -e "${YELLOW}Search Student${RESET}"
+
+echo "1. By Roll"
+echo "2. By Name"
+echo "3. By Class"
+
+read -p "Choose: " s
+
+case $s in
+
+1)
+read -p "Enter Roll: " roll
+result=$(grep ",$roll," $FILE)
+;;
+
+2)
+read -p "Enter Name: " name
+result=$(grep -i "$name" $FILE)
+;;
+
+3)
+read -p "Enter Class: " class
+result=$(grep ",$class$" $FILE)
+;;
+
+*)
+echo -e "${RED}Invalid Option${RESET}"
+continue
+;;
+
+esac
+
+if [ -z "$result" ]
+then
+echo -e "${RED}Student Not Found${RESET}"
+else
+
+echo "╔════╦══════════════╦══════╦═════╦══════╗"
+printf "║%-4s║%-14s║%-6s║%-5s║%-6s║\n" "No" "Name" "Roll" "Age" "Class"
+echo "╠════╬══════════════╬══════╬═════╬══════╣"
+
+count=1
+
+echo "$result" | while IFS=',' read name roll age class
+do
+printf "║%-4s║%-14s║%-6s║%-5s║%-6s║\n" "$count" "$name" "$roll" "$age" "$class"
+((count++))
+done
+
+echo "╚════╩══════════════╩══════╩═════╩══════╝"
+
+fi
+
+;;
+
+3)
+
+echo -e "${YELLOW}All Students${RESET}"
+
+if [ ! -s $FILE ]
+then
+echo -e "${RED}No Records Found${RESET}"
+else
+
+echo "╔════╦══════════════╦══════╦═════╦══════╗"
+printf "║%-4s║%-14s║%-6s║%-5s║%-6s║\n" "No" "Name" "Roll" "Age" "Class"
+echo "╠════╬══════════════╬══════╬═════╬══════╣"
+
+count=1
+
+while IFS=',' read name roll age class
+do
+printf "║%-4s║%-14s║%-6s║%-5s║%-6s║\n" "$count" "$name" "$roll" "$age" "$class"
+((count++))
+done < $FILE
+
+echo "╚════╩══════════════╩══════╩═════╩══════╝"
+
+fi
+
+;;
+
+4)
+
+echo -e "${YELLOW}Remove Student${RESET}"
+
+read -p "Enter Roll Number: " roll
+
+if grep -q ",$roll," $FILE
+then
+grep -v ",$roll," $FILE > temp.txt
+mv temp.txt $FILE
+echo -e "${GREEN}Student Removed Successfully${RESET}"
+else
+echo -e "${RED}Roll Number Not Found${RESET}"
+fi
+
+;;
+
+5)
+
+echo -e "${BLUE}Student Dashboard${RESET}"
+
+total=$(wc -l < $FILE)
+
+echo
+echo "Total Students: $total"
+echo
+
+echo "Students Per Class"
+echo "------------------"
+
+for i in {1..12}
+do
+count=$(grep ",$i$" $FILE | wc -l)
+echo "Class $i : $count"
+done
+
+;;
+
+6)
+
+echo -e "${YELLOW}Creating Backup...${RESET}"
+
+timestamp=$(date +"%Y%m%d_%H%M%S")
+
+cp $FILE $BACKUP_DIR/students_$timestamp.txt
+
+echo -e "${GREEN}Backup Created${RESET}"
+echo "File: $BACKUP_DIR/students_$timestamp.txt"
+
+;;
+
+7)
+
+echo -e "${YELLOW}Exporting CSV...${RESET}"
+
+cp $FILE students_export.csv
+
+echo -e "${GREEN}CSV Export Created${RESET}"
+echo "File: students_export.csv"
+
+;;
+
+8)
+
+echo -e "${BLUE}Program Closed${RESET}"
+exit
+
+;;
+
+*)
+
+echo -e "${RED}Invalid Choice${RESET}"
+
+;;
+
+esac
+
+done
